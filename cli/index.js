@@ -6,7 +6,7 @@ const path = require('path')
 const util = require('util')
 const assert = require('assert')
 const program = require('commander')
-const tabtab = require('commander-tabtab')
+const completion = require('./complete.js')
 const xTime = require('x-time')
 
 const z1 = require('./../remote/index')
@@ -174,8 +174,10 @@ if(process.argv.length === 2) {
   handle(new Error('no command given'))
 }
 
-tabtab.init(program, 'z1')
-program.parse(argv)
+completion(program)
+// program.parse(argv)
+
+module.exports = program
 
 function getAppName() {
   console.log('no appName given')
