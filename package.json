@@ -1,11 +1,10 @@
 {
   "name": "z1",
-  "version": "3.3.2-0",
+  "version": "3.3.3-0",
   "description": "Node.js cluster manager",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha",
-    "postinstall": "install-completion zsh completion/_z1-zsh"
+    "test": "node_modules/mocha/bin/mocha"
   },
   "bin": "cli/index.js",
   "engines": {
