@@ -17,8 +17,10 @@ const rString = /.+/
 const SPACER = '--'
 
 let pArgv = []
-if(process.argv.includes(SPACER)) {
-  pArgv = process.argv.slice(process.argv.lastIndexOf(SPACER) + 1)
+if(!process.argv.join('').includes('z1 completion')) {
+  pArgv = process.argv.splice(process.argv.indexOf(SPACER))
+  // remove the spacer
+  pArgv.shift()
 }
 
 program
@@ -96,7 +98,7 @@ program
   })
 program
   .command('restart', 'restart the app specified by the appName')
-  .argument('<appName>', 'app to restart')
+  .argument('[appName]', 'app to restart')
   .complete(completeApp)
   .option('-t, --timeout <timeout>', 'time until the old workers get killed', program.INT)
   .option('-s, --signal <signal>', 'kill signal for the old workers', checkString)
