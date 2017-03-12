@@ -76,8 +76,7 @@ program
 program
   .command('stop', 'stop the app specified by the appName')
   .argument('[appName]', 'app to stop')
-  .complete(['example', 'asdf'])
-  // .complete(completeApp)
+  .complete(completeApp)
   .option('-t, --timeout <timeout>', 'time until the workers get killed', program.INT)
   .option('-s, --signal <signal>', 'kill signal', checkString)
   .action((args, opts) => {
@@ -97,8 +96,8 @@ program
   })
 program
   .command('restart', 'restart the app specified by the appName')
-  .argument('<appName>', 'app to restart', null, null, true)
-  // .complete(completeApp)
+  .argument('<appName>', 'app to restart')
+  .complete(completeApp)
   .option('-t, --timeout <timeout>', 'time until the old workers get killed', program.INT)
   .option('-s, --signal <signal>', 'kill signal for the old workers', checkString)
   .action((args, opts) => {
@@ -184,15 +183,15 @@ function checkList(list) {
   return items
 }
 
-// function completeApp() {
-//   return z1.list().then(data => {
-//     return Object.keys(data.stats).map(name => {
-//       const obj = data.stats[name]
-//       const dir = obj.dir
-//       return name + ':' + dir
-//     })
-//   })
-// }
+function completeApp() {
+  return z1.list().then(data => {
+    return Object.keys(data.stats).map(name => {
+      const obj = data.stats[name]
+      const dir = obj.dir
+      return name + ':' + dir
+    })
+  })
+}
 
 function getAppName() {
   console.log('no appName given')
