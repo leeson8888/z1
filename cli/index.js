@@ -16,11 +16,9 @@ const rString = /.+/
 
 const SPACER = '--'
 
-const argv = process.argv.slice()
-let args = []
-let count = argv.filter(item => item === SPACER).length
-if((count && !argv.includes('completion')) || count > 1) {
-  args = argv.splice(argv.indexOf(SPACER) + 1)
+let pArgv = []
+if(process.argv.includes(SPACER)) {
+  pArgv = process.argv.slice(process.argv.lastIndexOf(SPACER) + 1)
 }
 
 program
@@ -39,15 +37,14 @@ program
 program
   .command('start', 'start the app in the dir')
   .argument('[dir]', 'directory of the app')
-  .option('--name <name>', 'name of your app', checkString)
-  .option('--ports <ports>', 'ports that your app listens to', checkList)
-  .option('--workers <workers>', 'count of workers (default: number of CPUs)', checkString)
-  .option('--output <output>', 'directory for the log files of this app', checkDir)
-  .option('--env <env>', 'environment variables e.g. NODE_ENV=development', checkString)
+  .option('-n, --name <name>', 'name of your app', checkString)
+  .option('-p, --ports <ports>', 'ports that your app listens to', checkList)
+  .option('-w, --workers <workers>', 'count of workers', program.INT)
+  .option('-o, --output <output>', 'directory for the log files of this app', checkDir)
+  .option('-w, --env <env>', 'environment variables e.g. NODE_ENV=development', checkString)
   .action((args, opts, logger) => {
     const dir = args.dir
     // prepare opts
-    console.log('args:', args, 'opts:', opts)
     const opt = {
       name: opts.name,
       workers: opts.workers,
@@ -68,7 +65,7 @@ program
 
     console.log('starting app')
     spam.start()
-    return z1.start(dir, args, opt, env).then(data => {
+    return z1.start(dir, pArgv, opt, env).then(data => {
       spam.stop()
       console.log('started')
       console.log('name:', data.app)
@@ -79,19 +76,17 @@ program
 program
   .command('stop', 'stop the app specified by the appName')
   .argument('[appName]', 'app to stop')
-  .complete(() => {
-    return z1.list().then(data => {
-      return Object.keys(data.stats)
-    })
-  })
-  .option('-t, --timeout <timeout>', 'time until the workers get killed')
-  .option('-s, --signal <signal>', 'kill signal')
-  .action((appName = getAppName(), opts) => {
+  .complete(['example', 'asdf'])
+  // .complete(completeApp)
+  .option('-t, --timeout <timeout>', 'time until the workers get killed', program.INT)
+  .option('-s, --signal <signal>', 'kill signal', checkString)
+  .action((args, opts) => {
+    const appName = args.appName || getAppName()
     const opt = {
       timeout: opts.timeout,
       signal: opts.signal
     }
-    console.log(`stopping app "${appName}"`)
+    console.log(`stopping "${appName}"`)
     spam.start()
     return z1.stop(appName, opt).then(data => {
       spam.stop()
@@ -102,20 +97,18 @@ program
   })
 program
   .command('restart', 'restart the app specified by the appName')
-  .argument('[appName]', 'app to restart')
-  .complete(appName => {
-    return z1.list().then(data => {
-      return Object.keys(data.stats)
-    })
-  })
-  .option('-t, --timeout <timeout>', 'time until the old workers get killed')
-  .option('-s, --signal <signal>', 'kill signal for the old workers')
-  .action((appName = getAppName(), opts) => {
+  .argument('<appName>', 'app to restart', null, null, true)
+  // .complete(completeApp)
+  .option('-t, --timeout <timeout>', 'time until the old workers get killed', program.INT)
+  .option('-s, --signal <signal>', 'kill signal for the old workers', checkString)
+  .action((args, opts) => {
+    const appName = args.appName || getAppName()
+    console.log(appName)
     const opt = {
       timeout: opts.timeout,
       signal: opts.signal
     }
-    console.log(`restarting app "${appName}"`)
+    console.log(`restarting "${appName}"`)
     spam.start()
     return z1.restart(appName, opt).then(data => {
       spam.stop()
@@ -128,18 +121,12 @@ program
   })
 program
   .command('list', 'overview of all running workers')
-  .option('-m, --minimal', 'minimalistic list (easy to parse)')
   .action(opt => {
     return z1.list().then(data => {
       const props = Object.keys(data.stats)
 
       if(!props.length) {
         console.log('no workers running')
-        return
-      }
-
-      if(opt.minimal) {
-        console.log(props.join(' '))
         return
       }
 
@@ -174,7 +161,7 @@ program
     }).catch(handle)
   })
 
-program.parse(argv)
+program.parse(process.argv)
 
 module.exports = program
 
@@ -196,6 +183,16 @@ function checkList(list) {
   assert(items.length)
   return items
 }
+
+// function completeApp() {
+//   return z1.list().then(data => {
+//     return Object.keys(data.stats).map(name => {
+//       const obj = data.stats[name]
+//       const dir = obj.dir
+//       return name + ':' + dir
+//     })
+//   })
+// }
 
 function getAppName() {
   console.log('no appName given')
