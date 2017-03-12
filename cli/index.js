@@ -5,8 +5,7 @@ const fs = require('fs')
 const path = require('path')
 const util = require('util')
 const assert = require('assert')
-const program = require('commander')
-const completion = require('./complete.js')
+const program = require('caporal')
 const xTime = require('x-time')
 
 const z1 = require('./../remote/index')
@@ -17,18 +16,18 @@ const SPACER = '--'
 
 const argv = process.argv.slice()
 let args = []
-if(argv.includes(SPACER)) {
+let count = argv.filter(item => item === SPACER).length
+if((count && !argv.includes('completion')) || count > 1) {
   args = argv.splice(argv.indexOf(SPACER) + 1)
 }
 
 program
   .version(pack.version)
-  .action(function (cmd) {
-    handle(new Error(`command "${cmd}" not found`))
-  })
+  // .action(function (cmd) {
+  //   handle(new Error(`command "${cmd}" not found`))
+  // })
 program
-  .command('resurrect')
-  .description('start the apps that were started before exit')
+  .command('resurrect', 'start the apps that were started before exit')
   .action(() => {
     console.log('resurrecting')
     spam.start()
@@ -39,9 +38,19 @@ program
     }).catch(handle)
   })
 program
-  .command('start [dir]')
-  .usage('[options] [dir] [-- [arguments]]')
-  .description('start the app in the dir')
+  .command('start', 'start the app in the dir')
+  .argument('[dir]', 'directory of the app')
+  .complete(dir => {
+    return new Promise((resolve, reject) => {
+      fs.readDir(path.dirname(dir), (err, result) => {
+        if(err) {
+          return reject(err)
+        }
+        resolve(result)
+      })
+    })
+  })
+  // .usage('[options] [dir] [-- [arguments]]')
   .option('-n, --name <name>', 'name of your app')
   .option('-p, --ports <ports>', 'ports that your app listens to')
   .option('-w, --workers <workers>', 'count of workers (default: number of CPUs)')
@@ -81,8 +90,13 @@ program
     }).catch(handle)
   })
 program
-  .command('stop [appName]')
-  .description('stop the app specified by the appName')
+  .command('stop', 'stop the app specified by the appName')
+  .argument('[appName]', 'app to stop')
+  .complete(appName => {
+    return z1.list().then(data => {
+      return Object.keys(data.stats)
+    })
+  })
   .option('-t, --timeout <timeout>', 'time until the workers get killed')
   .option('-s, --signal <signal>', 'kill signal')
   .action((appName = getAppName(), opts) => {
@@ -100,29 +114,33 @@ program
     }).catch(handle)
   })
 program
-  .command('restart [appName]')
-  .description('restart the app specified by the appName')
+  .command('restart', 'restart the app specified by the appName')
+  .argument('[appName]', 'app to restart')
+  .complete(appName => {
+    return z1.list().then(data => {
+      return Object.keys(data.stats)
+    })
+  })
   .option('-t, --timeout <timeout>', 'time until the old workers get killed')
   .option('-s, --signal <signal>', 'kill signal for the old workers')
-  .action((appName = getAppName(), opts) => {
-    const opt = {
-      timeout: opts.timeout,
-      signal: opts.signal
-    }
-    console.log(`restarting app "${appName}"`)
-    spam.start()
-    return z1.restart(appName, opt).then(data => {
-      spam.stop()
-      console.log('restarted')
-      console.log('name:', data.app)
-      console.log('ports:', data.ports.join())
-      console.log('workers started:', data.started)
-      console.log('workers killed:', data.killed)
-    }).catch(handle)
-  })
+  // .action((appName = getAppName(), opts) => {
+  //   const opt = {
+  //     timeout: opts.timeout,
+  //     signal: opts.signal
+  //   }
+  //   console.log(`restarting app "${appName}"`)
+  //   spam.start()
+  //   return z1.restart(appName, opt).then(data => {
+  //     spam.stop()
+  //     console.log('restarted')
+  //     console.log('name:', data.app)
+  //     console.log('ports:', data.ports.join())
+  //     console.log('workers started:', data.started)
+  //     console.log('workers killed:', data.killed)
+  //   }).catch(handle)
+  // })
 program
-  .command('list')
-  .description('overview of all running workers')
+  .command('list', 'overview of all running workers')
   .option('-m, --minimal', 'minimalistic list (easy to parse)')
   .action(opt => {
     return z1.list().then(data => {
@@ -162,20 +180,18 @@ program
     }).catch(handle)
   })
 program
-  .command('exit')
-  .description('kill the z1 daemon')
+  .command('exit', 'kill the z1 daemon')
   .action(() => {
     return z1.exit().then(data => {
       console.log('daemon stopped')
     }).catch(handle)
   })
 
-if(process.argv.length === 2) {
-  handle(new Error('no command given'))
-}
+// if(process.argv.length === 2) {
+//   handle(new Error('no command given'))
+// }
 
-completion(program)
-// program.parse(argv)
+program.parse(argv)
 
 module.exports = program
 
