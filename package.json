@@ -4,9 +4,7 @@
   "description": "Node.js cluster manager",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha",
-    "install": "tabtab install --auto",
-    "uninstall": "tabtab uninstall"
+    "test": "node_modules/mocha/bin/mocha"
   },
   "bin": "cli/index.js",
   "engines": {

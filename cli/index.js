@@ -12,6 +12,8 @@ const z1 = require('./../remote/index')
 const pack = require('./../package.json')
 const spam = require('./message')
 
+const rString = /.+/
+
 const SPACER = '--'
 
 const argv = process.argv.slice()
@@ -23,9 +25,6 @@ if((count && !argv.includes('completion')) || count > 1) {
 
 program
   .version(pack.version)
-  // .action(function (cmd) {
-  //   handle(new Error(`command "${cmd}" not found`))
-  // })
 program
   .command('resurrect', 'start the apps that were started before exit')
   .action(() => {
@@ -40,31 +39,19 @@ program
 program
   .command('start', 'start the app in the dir')
   .argument('[dir]', 'directory of the app')
-  .complete(dir => {
-    return new Promise((resolve, reject) => {
-      fs.readDir(path.dirname(dir), (err, result) => {
-        if(err) {
-          return reject(err)
-        }
-        resolve(result)
-      })
-    })
-  })
-  // .usage('[options] [dir] [-- [arguments]]')
-  .option('-n, --name <name>', 'name of your app')
-  .option('-p, --ports <ports>', 'ports that your app listens to')
-  .option('-w, --workers <workers>', 'count of workers (default: number of CPUs)')
-  .option('-o, --output <output>', 'directory for the log files of this app')
-  .option('-e, --env <env>', 'environment variables e.g. NODE_ENV=development')
-  .action((dir, opts) => {
-
+  .option('--name <name>', 'name of your app', checkString)
+  .option('--ports <ports>', 'ports that your app listens to', checkList)
+  .option('--workers <workers>', 'count of workers (default: number of CPUs)', checkString)
+  .option('--output <output>', 'directory for the log files of this app', checkDir)
+  .option('--env <env>', 'environment variables e.g. NODE_ENV=development', checkString)
+  .action((args, opts, logger) => {
+    const dir = args.dir
     // prepare opts
+    console.log('args:', args, 'opts:', opts)
     const opt = {
       name: opts.name,
-      workers: opts.workers
-    }
-    if(opts.ports) {
-      opt.ports = opts.ports.split(',').map(v => +v)
+      workers: opts.workers,
+      ports: opts.ports
     }
     if(opts.output) {
       opt.output = path.resolve(opts.output)
@@ -92,7 +79,7 @@ program
 program
   .command('stop', 'stop the app specified by the appName')
   .argument('[appName]', 'app to stop')
-  .complete(appName => {
+  .complete(() => {
     return z1.list().then(data => {
       return Object.keys(data.stats)
     })
@@ -123,22 +110,22 @@ program
   })
   .option('-t, --timeout <timeout>', 'time until the old workers get killed')
   .option('-s, --signal <signal>', 'kill signal for the old workers')
-  // .action((appName = getAppName(), opts) => {
-  //   const opt = {
-  //     timeout: opts.timeout,
-  //     signal: opts.signal
-  //   }
-  //   console.log(`restarting app "${appName}"`)
-  //   spam.start()
-  //   return z1.restart(appName, opt).then(data => {
-  //     spam.stop()
-  //     console.log('restarted')
-  //     console.log('name:', data.app)
-  //     console.log('ports:', data.ports.join())
-  //     console.log('workers started:', data.started)
-  //     console.log('workers killed:', data.killed)
-  //   }).catch(handle)
-  // })
+  .action((appName = getAppName(), opts) => {
+    const opt = {
+      timeout: opts.timeout,
+      signal: opts.signal
+    }
+    console.log(`restarting app "${appName}"`)
+    spam.start()
+    return z1.restart(appName, opt).then(data => {
+      spam.stop()
+      console.log('restarted')
+      console.log('name:', data.app)
+      console.log('ports:', data.ports.join())
+      console.log('workers started:', data.started)
+      console.log('workers killed:', data.killed)
+    }).catch(handle)
+  })
 program
   .command('list', 'overview of all running workers')
   .option('-m, --minimal', 'minimalistic list (easy to parse)')
@@ -187,13 +174,28 @@ program
     }).catch(handle)
   })
 
-// if(process.argv.length === 2) {
-//   handle(new Error('no command given'))
-// }
-
 program.parse(argv)
 
 module.exports = program
+
+function checkDir(dir) {
+  fs.readdirSync(dir)
+  return dir
+}
+
+function checkString(string) {
+  assert(string)
+  assert.strictEqual(typeof string, 'string')
+  return string
+}
+
+function checkList(list) {
+  list += ''
+  checkString(list)
+  const items = list.split(',').map(item => +item).filter(item => item)
+  assert(items.length)
+  return items
+}
 
 function getAppName() {
   console.log('no appName given')
